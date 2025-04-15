@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;  // تأكد من تضمين هذا الاستيراد
 
 public class MemoryGameManager : MonoBehaviour
 {
@@ -10,7 +11,6 @@ public class MemoryGameManager : MonoBehaviour
     public Sprite[] cardFrontImages;
     public Sprite cardBackImage;
 
-    public Text attemptsText;
     public Text scoreText;
     public Text levelText;
     public Button nextLevelButton;
@@ -20,13 +20,13 @@ public class MemoryGameManager : MonoBehaviour
     private Button firstRevealed = null;
     private Button secondRevealed = null;
 
-    private int attempts = 0;
     private int score = 0;
     private int matchedPairs = 0;
     private int level = 1;
 
     void Start()
     {
+        LoadProgress(); // تحميل المستوى والنقاط
         nextLevelButton.gameObject.SetActive(false);
         GenerateLevel();
     }
@@ -35,11 +35,8 @@ public class MemoryGameManager : MonoBehaviour
     {
         ClearCards();
 
-        attempts = 0;
-        score = 0;
         matchedPairs = 0;
 
-        UpdateAttemptsText();
         UpdateScoreText();
         UpdateLevelText();
 
@@ -81,9 +78,6 @@ public class MemoryGameManager : MonoBehaviour
         else
         {
             secondRevealed = card;
-            attempts++;
-            UpdateAttemptsText();
-
             StartCoroutine(CheckMatch(firstRevealed, secondRevealed));
         }
     }
@@ -120,11 +114,6 @@ public class MemoryGameManager : MonoBehaviour
         }
     }
 
-    void UpdateAttemptsText()
-    {
-        attemptsText.text = " تﻻﻭﺎﺤﻤﻟﺍ دﺪﻋ: " + attempts;
-    }
-
     void UpdateScoreText()
     {
         scoreText.text = ":ﺔﺠﻴﺘﻨﻟﺍ " + score;
@@ -153,9 +142,9 @@ public class MemoryGameManager : MonoBehaviour
     {
         level++;
         nextLevelButton.gameObject.SetActive(false);
+        SaveProgress(); // حفظ النقاط والمستوى
         GenerateLevel();
     }
-
 
     void Shuffle(List<int> list)
     {
@@ -167,4 +156,43 @@ public class MemoryGameManager : MonoBehaviour
             list[rand] = temp;
         }
     }
+
+    // 💾 حفظ التقدم
+    void SaveProgress()
+    {
+        PlayerPrefs.SetInt("SavedScore", score);
+        PlayerPrefs.SetInt("SavedLevel", level);
+        PlayerPrefs.Save();
+    }
+
+    // 📥 تحميل التقدم
+    void LoadProgress()
+    {
+        score = PlayerPrefs.GetInt("SavedScore", 0);
+        level = PlayerPrefs.GetInt("SavedLevel", 1);
+    }
+
+    // زر إعادة التقدم
+    public void ResetProgress()
+    {
+        // مسح التقدم المحفوظ
+        PlayerPrefs.DeleteKey("SavedScore");
+        PlayerPrefs.DeleteKey("SavedLevel");
+        PlayerPrefs.Save();
+
+        // إعادة تعيين النقاط والمستوى
+        score = 0;
+        level = 1;
+
+        // تحديث النصوص
+        UpdateScoreText();
+        UpdateLevelText();
+
+        // إخفاء زر الانتقال إلى المستوى التالي في حال كانت اللعبة في مرحلة سابقة
+        nextLevelButton.gameObject.SetActive(false);
+
+        // إعادة تحميل المشهد الخاص باللعبة
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
 }
+
