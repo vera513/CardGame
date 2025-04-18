@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.SceneManagement;  // تأكد من تضمين هذا الاستيراد
+using UnityEngine.SceneManagement;
 
 public class MemoryGameManager : MonoBehaviour
 {
@@ -14,7 +14,13 @@ public class MemoryGameManager : MonoBehaviour
     public Text scoreText;
     public Text levelText;
     public Button nextLevelButton;
+    public Text countdownText;
 
+    public GameObject fullScreenPanel;
+    public Image fullScreenImage;
+    public Button closeButton;
+
+    private HashSet<int> shownCards = new HashSet<int>();
     private List<Button> currentCards = new List<Button>();
     private List<int> cardValues = new List<int>();
     private Button firstRevealed = null;
@@ -26,23 +32,49 @@ public class MemoryGameManager : MonoBehaviour
 
     void Start()
     {
-        LoadProgress(); // تحميل المستوى والنقاط
+        LoadProgress();
         nextLevelButton.gameObject.SetActive(false);
+        StartCoroutine(CountdownAndReveal());
+    }
+
+    IEnumerator CountdownAndReveal()
+    {
+        countdownText.gameObject.SetActive(true);
+
+        for (int i = 3; i > 0; i--)
+        {
+            countdownText.text = i.ToString();
+            yield return new WaitForSeconds(1f);
+        }
+
+        countdownText.gameObject.SetActive(false);
         GenerateLevel();
+
+        for (int i = 0; i < currentCards.Count; i++)
+        {
+            int value = cardValues[i];
+            currentCards[i].GetComponent<Image>().sprite = cardFrontImages[value];
+        }
+
+        yield return new WaitForSeconds(0.5f);
+
+        for (int i = 0; i < currentCards.Count; i++)
+        {
+            currentCards[i].GetComponent<Image>().sprite = cardBackImage;
+        }
     }
 
     void GenerateLevel()
     {
         ClearCards();
-
         matchedPairs = 0;
 
         UpdateScoreText();
         UpdateLevelText();
 
         int numCards = GetCardCountForLevel(level);
-
         cardValues.Clear();
+
         for (int i = 0; i < numCards / 2; i++)
         {
             cardValues.Add(i);
@@ -84,7 +116,7 @@ public class MemoryGameManager : MonoBehaviour
 
     IEnumerator CheckMatch(Button card1, Button card2)
     {
-        yield return new WaitForSeconds(1f);
+        yield return new WaitForSeconds(0.5f);
 
         int val1 = cardValues[currentCards.IndexOf(card1)];
         int val2 = cardValues[currentCards.IndexOf(card2)];
@@ -95,6 +127,13 @@ public class MemoryGameManager : MonoBehaviour
             card1.interactable = false;
             card2.interactable = false;
             score += 10;
+
+            if (!shownCards.Contains(val1))
+            {
+                shownCards.Add(val1);
+                SaveShownCard(val1);
+                yield return StartCoroutine(ShowCardFullScreen(val1));
+            }
         }
         else
         {
@@ -104,7 +143,6 @@ public class MemoryGameManager : MonoBehaviour
         }
 
         UpdateScoreText();
-
         firstRevealed = null;
         secondRevealed = null;
 
@@ -114,14 +152,46 @@ public class MemoryGameManager : MonoBehaviour
         }
     }
 
+    IEnumerator ShowCardFullScreen(int cardValue)
+    {
+        fullScreenPanel.SetActive(true);
+        fullScreenImage.sprite = cardFrontImages[cardValue];
+
+        bool waiting = true;
+        closeButton.onClick.RemoveAllListeners();
+        closeButton.onClick.AddListener(() =>
+        {
+            fullScreenPanel.SetActive(false);
+            waiting = false;
+        });
+
+        while (waiting)
+        {
+            yield return null;
+        }
+    }
+
+    void SaveShownCard(int cardValue)
+    {
+        string key = "UnlockedCard_" + cardValue;
+        PlayerPrefs.SetInt(key, 1);
+        PlayerPrefs.Save();
+    }
+
+    public bool IsCardUnlocked(int cardValue)
+    {
+        string key = "UnlockedCard_" + cardValue;
+        return PlayerPrefs.GetInt(key, 0) == 1;
+    }
+
     void UpdateScoreText()
     {
-        scoreText.text = ":ﺔﺠﻴﺘﻨﻟﺍ " + score;
+        scoreText.text = score + ":ﺔﺠﻴﺘﻨﻟﺍ";
     }
 
     void UpdateLevelText()
     {
-        levelText.text = " :ﺔﻠﺣﺮﻤﻟﺍ: " + level;
+        levelText.text = level + " :ﺔﻠﺣﺮﻤﻟﺍ";
     }
 
     int GetCardCountForLevel(int lvl)
@@ -142,8 +212,8 @@ public class MemoryGameManager : MonoBehaviour
     {
         level++;
         nextLevelButton.gameObject.SetActive(false);
-        SaveProgress(); // حفظ النقاط والمستوى
-        GenerateLevel();
+        SaveProgress();
+        StartCoroutine(CountdownAndReveal());
     }
 
     void Shuffle(List<int> list)
@@ -157,7 +227,6 @@ public class MemoryGameManager : MonoBehaviour
         }
     }
 
-    // 💾 حفظ التقدم
     void SaveProgress()
     {
         PlayerPrefs.SetInt("SavedScore", score);
@@ -165,34 +234,42 @@ public class MemoryGameManager : MonoBehaviour
         PlayerPrefs.Save();
     }
 
-    // 📥 تحميل التقدم
     void LoadProgress()
     {
         score = PlayerPrefs.GetInt("SavedScore", 0);
         level = PlayerPrefs.GetInt("SavedLevel", 1);
+
+        // ✅ تحميل البطاقات التي سبق عرضها
+        shownCards.Clear();
+        for (int i = 0; i < cardFrontImages.Length; i++)
+        {
+            if (IsCardUnlocked(i))
+            {
+                shownCards.Add(i);
+            }
+        }
     }
 
-    // زر إعادة التقدم
     public void ResetProgress()
     {
-        // مسح التقدم المحفوظ
         PlayerPrefs.DeleteKey("SavedScore");
         PlayerPrefs.DeleteKey("SavedLevel");
+
+        for (int i = 0; i < cardFrontImages.Length; i++)
+        {
+            PlayerPrefs.DeleteKey("UnlockedCard_" + i);
+        }
+
         PlayerPrefs.Save();
 
-        // إعادة تعيين النقاط والمستوى
         score = 0;
         level = 1;
 
-        // تحديث النصوص
         UpdateScoreText();
         UpdateLevelText();
 
-        // إخفاء زر الانتقال إلى المستوى التالي في حال كانت اللعبة في مرحلة سابقة
         nextLevelButton.gameObject.SetActive(false);
 
-        // إعادة تحميل المشهد الخاص باللعبة
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 }
-

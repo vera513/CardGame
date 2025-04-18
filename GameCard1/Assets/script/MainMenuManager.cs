@@ -23,20 +23,29 @@ public class MainMenuManager : MonoBehaviour
         settingsButton.onClick.AddListener(OpenSettings);
         exitButton.onClick.AddListener(ExitGame);
         closeSettingsButton.onClick.AddListener(CloseSettings);
+
+        // التحقق مما إذا كانت هناك بيانات محفوظة
+        if (PlayerPrefs.HasKey("SavedLevel")) // "SavedLevel" هو اسم المفتاح لحفظ المستوى
+        {
+            continueGameButton.gameObject.SetActive(true); // إظهار زر الاستئناف
+        }
+        else
+        {
+            continueGameButton.gameObject.SetActive(false); // إخفاء زر الاستئناف
+        }
     }
 
     // لبدء لعبة جديدة
     public void StartNewGame()
     {
-        // هنا يمكنك إضافة الكود للانتقال إلى المشهد الأول للعبة
-        SceneManager.LoadScene("Level"); // استبدل "Level" باسم المشهد الخاص باللعبة
+        PlayerPrefs.DeleteAll(); // مسح كل بيانات الحفظ القديمة
+        SceneManager.LoadScene("Level"); // تحميل مشهد البداية من جديد
     }
 
-    // لاستئناف اللعبة (إذا كان لديك نظام حفظ التقدم)
+    // لاستئناف اللعبة
     public void ContinueGame()
     {
-        // هنا يمكنك إضافة الكود لاستئناف التقدم
-        SceneManager.LoadScene("Level"); // استبدل "Level" باسم المشهد الخاص باللعبة
+        SceneManager.LoadScene("Level"); // تحميل المشهد السابق من حيث تم الحفظ
     }
 
     // لفتح نافذة الإعدادات
@@ -56,5 +65,9 @@ public class MainMenuManager : MonoBehaviour
     {
         Application.Quit();
     }
-}
+    public void GoToStudio()
+    {
+        SceneManager.LoadScene("StudioScene");
+    }
 
+}

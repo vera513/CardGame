@@ -3,41 +3,48 @@ using UnityEngine.UI;
 
 public class SettingsManager : MonoBehaviour
 {
-    // مرجع للأزرار و السلايدر
+    // مرجع للسلايدر و حقل النص
     public Slider volumeSlider;
-    public Toggle fullscreenToggle;
+    public InputField usernameInputField;
 
     // لتخزين القيم
     private float savedVolume = 1f;
-    private bool savedFullscreen = true;
+    private string savedUsername = "";
 
     void Start()
     {
         // تحميل الإعدادات المحفوظة
         savedVolume = PlayerPrefs.GetFloat("Volume", 1f);
-        savedFullscreen = PlayerPrefs.GetInt("Fullscreen", 1) == 1;
+        savedUsername = PlayerPrefs.GetString("Username", "Player");
 
         // ضبط القيم في الواجهة
         volumeSlider.value = savedVolume;
-        fullscreenToggle.isOn = savedFullscreen;
+        usernameInputField.text = savedUsername;
 
         // إضافة الاستماع للتغييرات
         volumeSlider.onValueChanged.AddListener(OnVolumeChanged);
-        fullscreenToggle.onValueChanged.AddListener(OnFullscreenChanged);
+        usernameInputField.onEndEdit.AddListener(OnUsernameChanged);
     }
 
     // لتغيير مستوى الصوت
-    void OnVolumeChanged(float value)
+    public void OnVolumeChanged(float value)
     {
         AudioListener.volume = value; // تغيير مستوى الصوت في اللعبة
         PlayerPrefs.SetFloat("Volume", value); // حفظ القيمة
     }
 
-    // لتغيير وضع الشاشة الكاملة
-    void OnFullscreenChanged(bool isFullscreen)
+    // لتغيير اسم المستخدم
+    public void OnUsernameChanged(string value)
     {
-        Screen.fullScreen = isFullscreen;
-        PlayerPrefs.SetInt("Fullscreen", isFullscreen ? 1 : 0); // حفظ القيمة
+        savedUsername = value;
+        PlayerPrefs.SetString("Username", savedUsername); // حفظ اسم المستخدم
+    }
+
+    // عند الضغط على زر "تم" لا يتم إغلاق النافذة أو اختفاء الزر
+    public void OnDoneButtonClicked()
+    {
+        // فقط لحفظ الإعدادات بدون إغلاق النافذة أو تغيير حالتها
+        PlayerPrefs.SetFloat("Volume", volumeSlider.value);
+        PlayerPrefs.SetString("Username", usernameInputField.text);
     }
 }
-
